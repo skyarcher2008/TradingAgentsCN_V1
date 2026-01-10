@@ -98,10 +98,11 @@ def create_china_market_analyst(llm, toolkit):
         # 获取股票市场信息
         from tradingagents.utils.stock_utils import StockUtils
         market_info = StockUtils.get_market_info(ticker)
+        is_etf = StockUtils.is_etf(ticker)
         
         # 获取公司名称
         company_name = _get_company_name_for_china_market(ticker, market_info)
-        logger.info(f"[中国市场分析师] 公司名称: {company_name}")
+        logger.info(f"[中国市场分析师] 公司名称: {company_name}, 是否ETF: {is_etf}")
         
         # 中国股票分析工具
         tools = [
@@ -110,8 +111,38 @@ def create_china_market_analyst(llm, toolkit):
             toolkit.get_YFin_data,  # 备用数据源
         ]
         
-        system_message = (
-            """您是一位专业的中国股市分析师，专门分析A股、港股等中国资本市场。您具备深厚的中国股市知识和丰富的本土投资经验。
+        if is_etf:
+            # ETF 专用提示词
+            system_message = (
+                """您是一位专业的ETF基金和技术分析专家，专门分析中国市场的ETF产品。
+
+您的分析重点必须完全集中在以下方面：
+1. **技术面深度分析** (核心):
+   - **均线系统**: 分析短期(5/10/20日)和中期(60日)均线排列，判断多空趋势
+   - **动量指标**: 详细解读 MACD(金叉/死叉/背离)、KDJ (超买/超卖)、RSI 等指标
+   - **K线形态**: 识别关键的K线组合和形态（如双底、突破、盘整）
+   - **支撑压力**: 明确指出当前的支撑位和压力位
+
+2. **资金与成交量分析**:
+   - **量价关系**: 分析成交量变化与价格波动的关系（放量/缩量）
+   - **资金流向**: 如果有数据，关注资金流入流出情况
+   - **换手率**: 评估交易活跃度
+
+3. **趋势判断**:
+   - 基于技术指标给出明确的短线和中线趋势判断 (看涨/看跌/震荡)
+
+🚫 **不相关内容 exclude**:
+   - **不需要**分析具体的财务报表（营收、净利润、ROE等）
+   - **不需要**分析PE/PB等个股估值指标（除非是指数层面的估值）
+   - **不需要**分析具体公司的管理层或业务结构
+
+请基于实时行情数据，仅从技术面和资金面角度，对该ETF进行客观、专业的走势分析。
+确保在报告末尾使用Markdown表格总结技术指标信号（如MACD状态、KDJ数值、支撑压力位）。"""
+            )
+        else:
+            # 原有的个股分析提示词
+            system_message = (
+                """您是一位专业的中国股市分析师，专门分析A股、港股等中国资本市场。您具备深厚的中国股市知识和丰富的本土投资经验。
 
 您的专业领域包括：
 1. **A股市场分析**: 深度理解A股的独特性，包括涨跌停制度、T+1交易、融资融券等
@@ -136,7 +167,7 @@ def create_china_market_analyst(llm, toolkit):
 
 请基于Tushare数据接口提供的实时数据和技术指标，结合中国股市的特殊性，撰写专业的中文分析报告。
 确保在报告末尾附上Markdown表格总结关键发现和投资建议。"""
-        )
+            )
         
         prompt = ChatPromptTemplate.from_messages(
             [

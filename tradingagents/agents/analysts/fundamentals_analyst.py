@@ -148,6 +148,15 @@ def create_fundamentals_analyst(llm, toolkit):
 
         market_info = StockUtils.get_market_info(ticker)
         logger.info(f"🔍 [股票代码追踪] StockUtils.get_market_info 返回的市场信息: {market_info}")
+        
+        # 检查是否为ETF
+        if StockUtils.is_etf(ticker):
+            logger.info(f"📊 [基本面分析师] 检测到ETF代码 {ticker}，跳过基本面分析")
+            return {
+                "messages": [AIMessage(content="检测到当前标的为ETF基金。ETF不适用传统的个股基本面分析（如财务报表、PE/PB估值等）。请参考市场分析师的技术面和资金面分析报告。")],
+                "fundamentals_report": "ETF基金不进行基本面财务分析。",
+                "sender": "FundamentalsAnalyst",
+            }
 
         logger.debug(f"📊 [DEBUG] 股票类型检查: {ticker} -> {market_info['market_name']} ({market_info['currency_name']}")
         logger.debug(f"📊 [DEBUG] 详细市场信息: is_china={market_info['is_china']}, is_hk={market_info['is_hk']}, is_us={market_info['is_us']}")

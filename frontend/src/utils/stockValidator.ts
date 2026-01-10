@@ -32,13 +32,14 @@ export function validateAStock(code: string): StockValidationResult {
   }
   
   // 验证前缀
+  // 增加ETF前缀: 51/56/58(沪市ETF), 15/16(深市ETF/LOF)
   const prefix = cleanCode.substring(0, 2)
-  const validPrefixes = ['60', '68', '00', '30', '43', '83', '87']
+  const validPrefixes = ['60', '68', '00', '30', '43', '83', '87', '51', '56', '58', '15', '16']
   
   if (!validPrefixes.includes(prefix)) {
     return {
       valid: false,
-      message: 'A股代码前缀不正确（支持：60/68/00/30/43/83/87开头）'
+      message: 'A股代码前缀不正确（支持：股票[60/68/00/30/43/83/87]，ETF[51/56/58/15/16]）'
     }
   }
   

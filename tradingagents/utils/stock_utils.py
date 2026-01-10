@@ -67,6 +67,30 @@ class StockUtils:
         return StockUtils.identify_stock_market(ticker) == StockMarket.CHINA_A
     
     @staticmethod
+    def is_etf(ticker: str) -> bool:
+        """
+        判断是否为ETF基金
+        
+        Args:
+            ticker: 股票代码
+            
+        Returns:
+            bool: 是否为ETF
+        """
+        if not ticker:
+            return False
+            
+        # 移除后缀（如果有）
+        clean_ticker = str(ticker).split('.')[0]
+        
+        # ETF常用代码前缀
+        # 上海: 51, 56, 58
+        # 深圳: 15, 16
+        etf_prefixes = ('51', '56', '58', '15', '16')
+        
+        return clean_ticker.startswith(etf_prefixes)
+
+    @staticmethod
     def is_hk_stock(ticker: str) -> bool:
         """
         判断是否为港股
