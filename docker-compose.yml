@@ -95,6 +95,7 @@ services:
     image: mongo:4.4
     container_name: tradingagents-mongodb
     restart: unless-stopped
+    command: ["mongod", "--wiredTigerCacheSizeGB", "1.0"]  # 限制缓存最大1GB, 防止挤占NAS内存
     ports:
       - "27017:27017"
     environment:
