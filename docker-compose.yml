@@ -112,8 +112,8 @@ services:
       test: echo 'db.runCommand("ping").ok' | mongo --host localhost --port 27017 -u admin -p tradingagents123 --authenticationDatabase admin --quiet
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 120s
     logging:
       driver: "json-file"
       options:
