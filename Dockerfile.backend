@@ -1,0 +1,95 @@
+# Backend Dockerfile for FastAPI service (TradingAgents-CN v1.0.0-preview)
+# 前后端分离架构 - 后端服务
+# 支持多架构: amd64, arm64
+
+# 使用 Debian Bookworm (稳定版) 而不是 Trixie (测试版)
+FROM python:3.10-slim-bookworm
+
+# 获取构建架构信息
+ARG TARGETARCH
+
+# 国内网络加速：允许通过构建参数切换镜像源
+# 说明：默认使用阿里云 PyPI 镜像；如需自定义可在 docker compose build 时传入。
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_TRUSTED_HOST=mirrors.aliyun.com
+ARG APT_MIRROR_BASE=http://mirrors.aliyun.com/debian
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_INDEX_URL=${PIP_INDEX_URL} \
+    PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST} \
+    TZ=Asia/Shanghai
+
+WORKDIR /app
+
+# 创建必需的目录并安装系统依赖
+# - curl: 健康检查
+# - pandoc: 使用 Debian 仓库版本（国内网络更稳定）
+# - wkhtmltopdf: 使用 Debian 仓库版本（国内网络更稳定，用于 PDF 生成）
+# - 中文字体: 用于 PDF 中文显示
+RUN mkdir -p /app/logs /app/data /app/config && \
+    # 使用阿里云 Debian 镜像（提升国内网络稳定性）
+    # 兼容 Debian 新版 sources 格式（/etc/apt/sources.list.d/debian.sources）
+    if [ -f /etc/apt/sources.list ]; then \
+        sed -i "s|http://deb.debian.org/debian|${APT_MIRROR_BASE}|g" /etc/apt/sources.list; \
+        sed -i "s|http://security.debian.org/debian-security|${APT_MIRROR_BASE}-security|g" /etc/apt/sources.list; \
+    fi && \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i "s|http://deb.debian.org/debian|${APT_MIRROR_BASE}|g" /etc/apt/sources.list.d/debian.sources; \
+        sed -i "s|http://security.debian.org/debian-security|${APT_MIRROR_BASE}-security|g" /etc/apt/sources.list.d/debian.sources; \
+        sed -i "s|https://deb.debian.org/debian|${APT_MIRROR_BASE}|g" /etc/apt/sources.list.d/debian.sources; \
+        sed -i "s|https://security.debian.org/debian-security|${APT_MIRROR_BASE}-security|g" /etc/apt/sources.list.d/debian.sources; \
+    fi && \
+    # 配置 apt 重试和超时
+    echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::https::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries && \
+    # 更新软件源，允许失败后继续
+    (apt-get update || apt-get update || apt-get update) && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        fontconfig \
+        fonts-noto-cjk \
+        pandoc \
+        wkhtmltopdf \
+        xfonts-base \
+        wget \
+        xvfb && \
+    # 更新字体缓存
+    fc-cache -fv && \
+    rm -rf /var/lib/apt/lists/*
+
+# 复制pyproject.toml和README.md（pip安装需要）
+COPY pyproject.toml README.md ./
+
+# 安装Python依赖
+# 优化说明：
+# 1. 使用阿里云镜像加速下载
+# 2. 优先使用预编译的二进制wheel包（--prefer-binary）
+# 3. 避免从源码编译，大幅提升ARM架构构建速度
+# 4. 安装 PDF 导出工具: pdfkit
+RUN pip install --upgrade pip -i ${PIP_INDEX_URL} --trusted-host ${PIP_TRUSTED_HOST} && \
+    pip install --prefer-binary . -i ${PIP_INDEX_URL} --trusted-host ${PIP_TRUSTED_HOST} && \
+    pip install --prefer-binary pdfkit -i ${PIP_INDEX_URL} --trusted-host ${PIP_TRUSTED_HOST}
+
+# 复制后端代码和必需模块
+COPY app ./app
+COPY tradingagents ./tradingagents
+COPY config ./config
+COPY scripts ./scripts
+COPY docs ./docs
+COPY install ./install
+
+# 复制Docker环境配置文件
+COPY .env.docker ./.env
+
+# 暴露后端端口（与docker-compose.v1.0.0.yml一致）
+EXPOSE 8000
+
+# Docker环境标识
+ENV DOCKER_CONTAINER=true
+
+# 启动FastAPI服务
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
