@@ -51,15 +51,45 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('user-info')
     }
 
+    // 单机版去除登录限制，强制返回登录状态
     return {
-      isAuthenticated: !!validToken,
-      token: validToken,
-      refreshToken: validRefreshToken,
+      isAuthenticated: true,
+      token: 'dummy-token',
+      refreshToken: 'dummy-refresh-token',
 
-      user: validToken ? (useStorage('user-info', null).value || null) : null,
+      user: {
+        id: '1',
+        username: 'admin',
+        email: 'admin@example.com',
+        is_active: true,
+        is_verified: true,
+        is_admin: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        preferences: {
+          default_market: 'A股',
+          default_depth: '3',
+          default_analysts: [],
+          auto_refresh: true,
+          refresh_interval: 30,
+          ui_theme: 'light',
+          sidebar_width: 240,
+          language: 'zh-CN',
+          notifications_enabled: true,
+          email_notifications: false,
+          desktop_notifications: true,
+          analysis_complete_notification: true,
+          system_maintenance_notification: true
+        },
+        daily_quota: 999999,
+        concurrent_limit: 10,
+        total_analyses: 0,
+        successful_analyses: 0,
+        failed_analyses: 0
+      },
 
-      permissions: [],
-      roles: [],
+      permissions: ['*'],
+      roles: ['admin'],
 
       loginLoading: false,
       redirectPath: '/'
