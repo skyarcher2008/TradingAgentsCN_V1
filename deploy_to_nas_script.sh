@@ -133,6 +133,51 @@ else
     SUDO=""
 fi
 
+ensure_image() {
+    target="$1"  # e.g. python:3.10-slim-bookworm
+    shift
+
+    if $SUDO docker image inspect "$target" >/dev/null 2>&1; then
+        echo "   ✅ 已存在: $target"
+        return 0
+    fi
+
+    echo "   ⬇️  预拉取基础镜像: $target"
+
+    # Try direct pull first (may fail if registry mirror is down)
+    if $SUDO docker pull "$target" >/dev/null 2>&1; then
+        echo "   ✅ 拉取成功: $target"
+        return 0
+    fi
+
+    for candidate in "$@"; do
+        echo "   尝试镜像源: $candidate"
+        if $SUDO docker pull "$candidate"; then
+            $SUDO docker tag "$candidate" "$target"
+            echo "   ✅ 使用镜像源成功，并已标记为: $target"
+            return 0
+        fi
+    done
+
+    echo "❌ 无法拉取基础镜像: $target"
+    return 1
+}
+
+echo "🧱 [5a] 预拉取基础镜像(避免 DockerHub 超时)..."
+# Backend base image
+ensure_image "python:3.10-slim-bookworm" \
+    "docker.m.daocloud.io/library/python:3.10-slim-bookworm" \
+    "mirror.ccs.tencentyun.com/library/python:3.10-slim-bookworm" || exit 1
+
+# Frontend build/runtime base images
+ensure_image "node:22-alpine" \
+    "docker.m.daocloud.io/library/node:22-alpine" \
+    "mirror.ccs.tencentyun.com/library/node:22-alpine" || exit 1
+
+ensure_image "nginx:alpine" \
+    "docker.m.daocloud.io/library/nginx:alpine" \
+    "mirror.ccs.tencentyun.com/library/nginx:alpine" || exit 1
+
 $SUDO $DC down --remove-orphans || true
 $SUDO $DC up -d --build
 
