@@ -178,8 +178,41 @@ ensure_image "nginx:alpine" \
     "docker.m.daocloud.io/library/nginx:alpine" \
     "mirror.ccs.tencentyun.com/library/nginx:alpine" || exit 1
 
+echo "🧩 [5b] 先启动数据库与缓存，等待健康..."
 $SUDO $DC down --remove-orphans || true
-$SUDO $DC up -d --build
+$SUDO $DC up -d mongodb redis
+
+wait_healthy() {
+    name="$1"
+    timeout_sec="$2"
+    start_ts=$(date +%s)
+    while true; do
+        status="$($SUDO docker inspect "$name" --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+        health="$($SUDO docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' 2>/dev/null || echo missing)"
+
+        if [ "$status" = "running" ] && [ "$health" = "healthy" ]; then
+            echo "   ✅ $name healthy"
+            return 0
+        fi
+
+        now_ts=$(date +%s)
+        elapsed=$((now_ts - start_ts))
+        if [ "$elapsed" -ge "$timeout_sec" ]; then
+            echo "❌ 等待超时: $name status=$status health=$health"
+            $SUDO docker logs --tail 50 "$name" || true
+            return 1
+        fi
+
+        echo "   ⏳ 等待 $name ... status=$status health=$health (${elapsed}s)"
+        sleep 5
+    done
+}
+
+wait_healthy tradingagents-mongodb 240 || exit 1
+wait_healthy tradingagents-redis 120 || exit 1
+
+echo "🚀 [5c] 启动后端与前端..."
+$SUDO $DC up -d --build backend frontend
 
 echo "✅ 部署完成！服务状态："
 $SUDO $DC ps
