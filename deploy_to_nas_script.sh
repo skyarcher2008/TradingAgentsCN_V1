@@ -29,14 +29,83 @@ mkdir -p ~/projects/TradingAgentsCN_V1
 cd ~/projects/TradingAgentsCN_V1
 
 echo "🔄 [3/5] 同步代码..."
-if [ -d ".git" ]; then
-    echo "   更新现有代码..."
-    git fetch --all --prune
-    git reset --hard origin/main
+REPO_GIT="https://github.com/skyarcher2008/TradingAgentsCN_V1.git"
+REPO_TARBALL="https://codeload.github.com/skyarcher2008/TradingAgentsCN_V1/tar.gz/refs/heads/main"
+
+download_file() {
+    url="$1"
+    out="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -L --fail -o "$out" "$url"
+        return $?
+    fi
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$out" "$url"
+        return $?
+    fi
+    echo "❌ 缺少 curl/wget，无法下载代码"
+    return 1
+}
+
+copy_tree() {
+    src="$1"
+    dst="$2"
+    if cp -a "$src/." "$dst" 2>/dev/null; then
+        return 0
+    fi
+    cp -R "$src/." "$dst"
+}
+
+if command -v git >/dev/null 2>&1; then
+    if [ -d ".git" ]; then
+        echo "   使用 git 更新现有代码..."
+        git fetch --all --prune
+        git reset --hard origin/main
+    else
+        echo "   使用 git 克隆新代码..."
+        git clone "$REPO_GIT" .
+    fi
 else
-    echo "   克隆新代码..."
-    # 注意：这里使用固定地址，避免参数传递复杂度
-    git clone "https://github.com/skyarcher2008/TradingAgentsCN_V1.git" .
+    echo "   未安装 git，改用下载源码包方式部署..."
+    tmpdir="/tmp/tradingagents_deploy_$$"
+    rm -rf "$tmpdir" >/dev/null 2>&1 || true
+    mkdir -p "$tmpdir/extract"
+
+    archive="$tmpdir/repo.tar.gz"
+    echo "   下载: $REPO_TARBALL"
+    download_file "$REPO_TARBALL" "$archive"
+
+    # 解压
+    tar -xzf "$archive" -C "$tmpdir/extract"
+    rootdir="$(ls -1 "$tmpdir/extract" 2>/dev/null | head -n 1)"
+    if [ -z "$rootdir" ] || [ ! -d "$tmpdir/extract/$rootdir" ]; then
+        echo "❌ 解压失败，未找到源码目录"
+        exit 1
+    fi
+
+    # 保护本地持久化内容
+    mkdir -p "$tmpdir/preserve"
+    for p in .env data logs; do
+        if [ -e "$p" ]; then
+            mv "$p" "$tmpdir/preserve/" 2>/dev/null || true
+        fi
+    done
+
+    # 清空目录（避免覆盖旧文件）
+    find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+    # 拷贝新代码
+    copy_tree "$tmpdir/extract/$rootdir" .
+
+    # 还原持久化内容
+    for p in .env data logs; do
+        if [ -e "$tmpdir/preserve/$p" ]; then
+            rm -rf "$p" 2>/dev/null || true
+            mv "$tmpdir/preserve/$p" "$p" 2>/dev/null || true
+        fi
+    done
+
+    rm -rf "$tmpdir" >/dev/null 2>&1 || true
 fi
 
 echo "⚙️ [4/5] 配置环境变量..."
