@@ -54,7 +54,7 @@
     <!-- 主要功能区域 -->
     <el-row :gutter="24" class="main-content">
       <!-- 左侧：快速操作 -->
-      <el-col :span="16">
+      <el-col :xs="24" :sm="24" :md="16" :lg="16">
         <el-card class="quick-actions-card" header="快速操作">
           <div class="quick-actions">
             <div class="action-item" @click="goToSingleAnalysis">
@@ -168,9 +168,25 @@
       </el-col>
 
       <!-- 右侧：自选股和快讯 -->
-      <el-col :span="8">
-        <!-- 我的自选股 -->
-        <el-card class="favorites-card">
+      <el-col :xs="24" :sm="24" :md="8" :lg="8">
+        <!-- 移动端折叠控制 -->
+        <div class="mobile-widget-toggle" v-if="isMobile">
+          <el-button 
+            type="primary" 
+            plain 
+            style="width: 100%; margin-bottom: 16px;" 
+            @click="showSecondaryWidgets = !showSecondaryWidgets"
+          >
+            <el-icon style="margin-right: 4px">
+              <component :is="showSecondaryWidgets ? 'Hide' : 'More'" />
+            </el-icon>
+            {{ showSecondaryWidgets ? '收起更多信息' : '展开自选股与高级功能' }}
+          </el-button>
+        </div>
+
+        <div v-show="!isMobile || showSecondaryWidgets" class="secondary-widgets">
+          <!-- 我的自选股 -->
+          <el-card class="favorites-card">
           <template #header>
             <div class="card-header">
               <span>我的自选股</span>
@@ -293,15 +309,17 @@
 
         <!-- 多数据源同步 -->
         <MultiSourceSyncCard style="margin-top: 24px;" />
+        </div>
       </el-col>
     </el-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import {
   TrendCharts,
   Search,
@@ -310,7 +328,9 @@ import {
   List,
   ArrowRight,
   InfoFilled,
-  Reading
+  Reading,
+  More,
+  Hide
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { AnalysisTask, AnalysisStatus } from '@/types/analysis'
@@ -331,6 +351,11 @@ const userStats = ref({
   dailyUsed: 0,
   concurrentLimit: 3
 })
+
+// 移动端适配
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const isMobile = breakpoints.smaller('md')
+const showSecondaryWidgets = ref(false)
 
 const systemStatus = ref({
   api: true,
@@ -1031,6 +1056,75 @@ onMounted(async () => {
         color: var(--el-text-color-secondary);
         margin-bottom: 16px;
       }
+    }
+  }
+
+  // Mobile responsive tweaks
+  @media (max-width: 768px) {
+    .welcome-section {
+      padding: 16px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+
+      .welcome-content {
+        width: 100%;
+
+        .welcome-title {
+          font-size: 22px;
+          gap: 10px;
+          flex-wrap: wrap;
+
+          .version-badge {
+            font-size: 12px;
+          }
+        }
+
+        .welcome-subtitle {
+          font-size: 13px;
+        }
+      }
+
+      .welcome-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+
+        :deep(.el-button) {
+          width: 100%;
+        }
+      }
+    }
+
+    .learning-highlight-card {
+      .learning-highlight {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+
+        .learning-icon {
+          width: 60px;
+          height: 60px;
+        }
+
+        .learning-action {
+          width: 100%;
+
+          :deep(.el-button) {
+            width: 100%;
+          }
+        }
+      }
+    }
+
+    .main-content {
+      :deep(.el-col) {
+        margin-bottom: 16px;
+      }
+    }
+
+    .recent-analyses-card {
+      overflow-x: auto;
     }
   }
 }
