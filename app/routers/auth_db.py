@@ -67,23 +67,23 @@ class CreateUserRequest(BaseModel):
     password: str
     is_admin: bool = False
 
-async def get_current_user(authorization: Optional[str] = Header(default=None)) -> User:
+async def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
     """获取当前用户信息 - 单机版总是返回Admin用户"""
-    return User(
-        _id=ObjectId(),
-        username="admin",
-        email="admin@example.com",
-        hashed_password="dummy_hash",
-        is_active=True,
-        is_verified=True,
-        is_admin=True,
-        preferences=UserPreferences(),
-        daily_quota=999999,
-        concurrent_limit=10,
-        total_analyses=0,
-        successful_analyses=0,
-        failed_analyses=0
-    )
+    return {
+        "id": "507f1f77bcf86cd799439011",
+        "username": "admin",
+        "email": "admin@example.com",
+        "hashed_password": "dummy_hash",
+        "is_active": True,
+        "is_verified": True,
+        "is_admin": True,
+        "preferences": {},
+        "daily_quota": 999999,
+        "concurrent_limit": 10,
+        "total_analyses": 0,
+        "successful_analyses": 0,
+        "failed_analyses": 0
+    }
 
 
 

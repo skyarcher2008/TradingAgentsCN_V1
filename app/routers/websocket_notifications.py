@@ -132,12 +132,13 @@ async def websocket_notifications_endpoint(
     }
     """
     # 验证 token
-    token_data = AuthService.verify_token(token)
-    if not token_data:
-        await websocket.close(code=1008, reason="Unauthorized")
-        return
+    # 单机版跳过验证
+    # token_data = AuthService.verify_token(token)
+    # if not token_data:
+    #     await websocket.close(code=1008, reason="Unauthorized")
+    #     return
     
-    user_id = "admin"  # 从 token_data 中获取
+    user_id = "507f1f77bcf86cd799439011"  # Matches auth_db.py ID
     
     # 连接 WebSocket
     await manager.connect(websocket, user_id)
