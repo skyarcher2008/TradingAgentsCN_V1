@@ -86,17 +86,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
     )
 
 
-    # 原认证逻辑已禁用，直接返回模拟用户
 
-
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "name": user.username,
-        "is_admin": user.is_admin,
-        "roles": ["admin"] if user.is_admin else ["user"],
-        "preferences": user.preferences.model_dump() if user.preferences else {}
-    }
 
 @router.post("/login")
 async def login(payload: LoginRequest, request: Request):
