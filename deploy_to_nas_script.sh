@@ -1,5 +1,15 @@
 set -e
 
+# Some NAS images mount ~/projects as root-owned.
+# Use sudo (if available) to create/chown the deploy directory.
+SUDO=""
+if command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+fi
+
+ME="$(id -un 2>/dev/null || echo skyarcher)"
+MG="$(id -gn 2>/dev/null || echo skyarcher)"
+
 echo "🔧 [1/5] 配置网络代理(可选)..."
 PROXY_URL="http://127.0.0.1:38457"
 PROXY_OK=0
@@ -25,8 +35,11 @@ fi
 export PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"
 
 echo "📂 [2/5] 准备部署目录..."
-mkdir -p ~/projects/TradingAgentsCN_V1
-cd ~/projects/TradingAgentsCN_V1
+DEPLOY_DIR="$HOME/projects/TradingAgentsCN_V1"
+$SUDO mkdir -p "$DEPLOY_DIR"
+$SUDO chown -R "$ME:$MG" "$HOME/projects" >/dev/null 2>&1 || true
+$SUDO chown -R "$ME:$MG" "$DEPLOY_DIR" >/dev/null 2>&1 || true
+cd "$DEPLOY_DIR"
 
 echo "🔄 [3/5] 同步代码..."
 REPO_GIT="https://github.com/skyarcher2008/TradingAgentsCN_V1.git"
@@ -127,11 +140,7 @@ else
     exit 1
 fi
 
-if command -v sudo >/dev/null 2>&1; then
-    SUDO="sudo"
-else
-    SUDO=""
-fi
+:
 
 ensure_image() {
     target="$1"  # e.g. python:3.10-slim-bookworm
